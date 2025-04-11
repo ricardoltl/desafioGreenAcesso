@@ -1,6 +1,5 @@
-// src/server.ts
-import buildApp from './app'; // Importa a função de app.ts
-import db from './models'; // Importa a config do Sequelize
+import buildApp from './app';
+import db from './models';
 
 async function startServer() {
   let app;
@@ -11,17 +10,7 @@ async function startServer() {
     await db.sequelize.authenticate();
     app.log.info('Database connection established successfully.');
 
-    // if (process.env.NODE_ENV !== 'production') {
-    //   app.log.info('Syncing database models (alter: true)...');
-    //   await db.sequelize.sync({ alter: true }); // CUIDADO em prod
-    //   app.log.info('Database synced successfully.');
-    // } else {
-    //   app.log.info('Production mode. Skipping DB sync.');
-    // }
-
-    // A porta deve vir da config ou .env
-    // Se usar @fastify/env, estará em app.config.PORT
-    // Senão, use process.env.PORT
+ 
     const port = parseInt(process.env.PORT || '3000', 10);
     const host = '0.0.0.0';
 
@@ -29,8 +18,7 @@ async function startServer() {
     app.log.info(`Server listening on ${address}`);
 
   } catch (err) {
-    // Tratamento de erro na inicialização
-    const logger = app ? app.log : console; // Usa logger do app se disponível
+    const logger = app ? app.log : console; 
     logger.error('Error starting server:', err);
     process.exit(1);
   }

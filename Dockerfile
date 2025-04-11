@@ -14,6 +14,7 @@ COPY tsconfig.json .
 COPY ./src ./src
 COPY migrations ./migrations
 COPY seeders ./seeders
+COPY fonts ./fonts
 
 RUN npm run build
 

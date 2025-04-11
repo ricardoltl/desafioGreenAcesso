@@ -6,6 +6,8 @@ import csvImportService from "../services/csvImportService";
 import pdfImportService from "../services/pdfImportService";
 import { MultipartFile } from "@fastify/multipart";
 import boletoRepository from '../repositories/boletoRepository';
+import { Boleto } from '../models/boleto';
+import pdfReportService from "../services/pdfReportService";
 
 const UPLOAD_DIR = path.join(__dirname, "..", "..", "uploads");
 const PDF_OUTPUT_DIR = path.join(__dirname, "..", "..", "generated_pdfs");
@@ -19,6 +21,7 @@ interface GetBoletosQuery {
     valor_inicial?: number;
     valor_final?: number;
     id_lote?: number;
+    relatorio?: string | number;
 }
 
 async function importCsvHandler(request: FastifyRequest, reply: FastifyReply) {
@@ -158,21 +161,40 @@ async function getBoletosHandler(request: FastifyRequest<{ Querystring: GetBolet
     logger.info({ filters }, 'Requisição GET /boletos recebida');
 
     try {
-        const boletos = await boletoRepository.findWithFilters(filters, logger);
+        const boletos: Boleto[] = await boletoRepository.findWithFilters(filters, logger);
 
-        const formattedBoletos = boletos.map(b => ({
-            ...b.toJSON(),
-            valor: b.valor.toString(),
-        }));
+        if (filters.relatorio && String(filters.relatorio) === '1') {
+            logger.info(`[Handler] Parâmetro relatorio=1 detectado. Gerando PDF...`);
 
-        logger.info(`Busca concluída, retornando ${formattedBoletos.length} boletos.`);
-        reply.send(formattedBoletos);
+            if (boletos.length === 0) {
+                logger.info(`[Handler] Nenhum boleto encontrado para gerar relatório.`);
+                 return reply.send({ base64: null, message: 'Nenhum boleto encontrado para gerar o relatório.' });
+            }
+
+            const pdfBuffer = await pdfReportService.generateBoletoReport(
+                 boletos.map(b => b.toJSON()),
+                 logger
+             );
+
+            const base64Pdf = pdfBuffer.toString('base64');
+            logger.info(`[Handler] PDF gerado e convertido para Base64 (${base64Pdf.length} caracteres). Enviando resposta.`);
+
+            reply.send({ base64: base64Pdf });
+
+        } else {
+            logger.info(`[Handler] Retornando ${boletos.length} boletos como JSON.`);
+            const formattedBoletos = boletos.map(b => ({
+                ...b.toJSON(),
+                valor: b.valor.toString()
+            }));
+            reply.send(formattedBoletos);
+        }
 
     } catch (error: any) {
-        logger.error({ err: error }, 'Erro ao buscar boletos no handler');
+        logger.error({ err: error }, 'Erro ao processar GET /boletos no handler');
         reply.code(500).send({
             error: error.name || 'InternalServerError',
-            message: error.message || 'Ocorreu um erro ao buscar os boletos.'
+            message: error.message || 'Ocorreu um erro ao processar a requisição de boletos.'
         });
     }
 }

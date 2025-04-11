@@ -1,0 +1,149 @@
+{
+	"info": {
+		"_postman_id": "912277f9-32b2-4f3d-b16f-dc1ed3db6578",
+		"name": "GreenPark",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "6681666",
+		"_collection_link": "https://www.postman.com/warped-trinity-184522/workspace/desafio/collection/6681666-912277f9-32b2-4f3d-b16f-dc1ed3db6578?action=share&source=collection_link&creator=6681666"
+	},
+	"item": [
+		{
+			"name": "import csv",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/C:/Users/ricardo/desafios/greenAcesso/sindico.csv"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:3000/import/csv",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"import",
+						"csv"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "import pdf",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/C:/Users/ricardo/desafios/greenAcesso/sample-boleto.pdf"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:3000/import/pdf",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"import",
+						"pdf"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "listar boletos",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/boletos?&nome=JOSE&valor_inicial=100&valor_final=200&id_lote=3",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"boletos"
+					],
+					"query": [
+						{
+							"key": null,
+							"value": null
+						},
+						{
+							"key": "nome",
+							"value": "JOSE"
+						},
+						{
+							"key": "valor_inicial",
+							"value": "100"
+						},
+						{
+							"key": "valor_final",
+							"value": "200"
+						},
+						{
+							"key": "id_lote",
+							"value": "3"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "gerar relatório",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/boletos?relatorio=1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"boletos"
+					],
+					"query": [
+						{
+							"key": "relatorio",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
