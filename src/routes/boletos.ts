@@ -20,6 +20,10 @@ const boletoRoutes: FastifyPluginAsync = async (fastify: FastifyDefaultInstance)
   fastify.post('/import/pdf', {
     handler: boletosController.importPdfHandler
   });
+
+  fastify.get('/boletos', {
+    handler: boletosController.getBoletosHandler
+  });
 };
 
 export default fp(boletoRoutes, { name: 'boleto-routes' });

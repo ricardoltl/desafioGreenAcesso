@@ -1,120 +1,184 @@
-import { FastifyRequest, FastifyReply, FastifyBaseLogger } from 'fastify';
-import * as fs from 'fs';
-import { pipeline } from 'stream/promises';
-import * as path from 'path';
-import csvImportService from '../services/csvImportService';
-import pdfImportService from '../services/pdfImportService';
-import { MultipartFile } from '@fastify/multipart';
+import { FastifyRequest, FastifyReply, FastifyBaseLogger } from "fastify";
+import * as fs from "fs";
+import { pipeline } from "stream/promises";
+import * as path from "path";
+import csvImportService from "../services/csvImportService";
+import pdfImportService from "../services/pdfImportService";
+import { MultipartFile } from "@fastify/multipart";
+import boletoRepository from '../repositories/boletoRepository';
 
-
-const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
-const PDF_OUTPUT_DIR = path.join(__dirname, '..', '..', 'generated_pdfs');
+const UPLOAD_DIR = path.join(__dirname, "..", "..", "uploads");
+const PDF_OUTPUT_DIR = path.join(__dirname, "..", "..", "generated_pdfs");
 
 if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+interface GetBoletosQuery {
+    nome?: string;
+    valor_inicial?: number;
+    valor_final?: number;
+    id_lote?: number;
 }
 
 async function importCsvHandler(request: FastifyRequest, reply: FastifyReply) {
-    const logger = request.log;
-    let tempFilePath: string | null = null;
+  const logger = request.log;
+  let tempFilePath: string | null = null;
 
-    try {
-        const fileData: MultipartFile | undefined = await request.file();
-        if (!fileData) {
-            logger.warn('Nenhum arquivo CSV enviado.');
-            return reply.code(400).send({ error: 'BadRequest', message: 'Nenhum arquivo CSV enviado.' });
-        }
-
-        const isCsvFile = fileData.filename.toLowerCase().endsWith('.csv');
-        const isCsvMime = fileData.mimetype === 'text/csv' || fileData.mimetype === 'application/vnd.ms-excel';
-        if (!isCsvFile || !isCsvMime) {
-            logger.warn(`Arquivo inválido: ${fileData.filename}, mimetype: ${fileData.mimetype}`);
-            return reply.code(415).send({ error: 'UnsupportedMediaType', message: 'Formato de arquivo inválido. Envie um arquivo .csv' });
-        }
-
-        tempFilePath = path.join(UPLOAD_DIR, `import_${Date.now()}_${fileData.filename}`);
-        logger.info(`Recebendo arquivo CSV: ${fileData.filename}. Salvando em ${tempFilePath}`);
-
-        await pipeline(fileData.file, fs.createWriteStream(tempFilePath));
-        logger.info(`Arquivo salvo com sucesso.`);
-
-        logger.info(`Chamando csvImportService.processAndImportCsv para: ${tempFilePath}`);
-        const result = await csvImportService.processAndImportCsv(tempFilePath, logger as FastifyBaseLogger);
-
-        logger.info(`Processamento concluído. ${result.importedCount} boletos importados.`);
-        reply.code(result.importedCount > 0 ? 201 : 200).send(result);
-
-    } catch (error: any) {
-        logger.error({ err: error }, 'Erro no handler de importação de CSV');
-        const statusCode = error.statusCode || 500;
-        const responseError: { error: string; message: string; details?: any } = {
-            error: error.name || 'InternalServerError',
-            message: error.message || 'Ocorreu um erro inesperado.',
-        };
-        if (error.details && process.env.NODE_ENV !== 'production') {
-            responseError.details = error.details;
-        }
-        reply.code(statusCode).send(responseError);
-
-    } finally {
-        if (tempFilePath && fs.existsSync(tempFilePath)) {
-            fs.unlink(tempFilePath, (err) => {
-                if (err) logger.error({ err }, `Erro ao deletar arquivo temp ${tempFilePath}`);
-                else logger.info(`Arquivo temp ${tempFilePath} deletado.`);
-            });
-        }
+  try {
+    const fileData: MultipartFile | undefined = await request.file();
+    if (!fileData) {
+      logger.warn("Nenhum arquivo CSV enviado.");
+      return reply
+        .code(400)
+        .send({ error: "BadRequest", message: "Nenhum arquivo CSV enviado." });
     }
+
+    const isCsvFile = fileData.filename.toLowerCase().endsWith(".csv");
+    const isCsvMime =
+      fileData.mimetype === "text/csv" ||
+      fileData.mimetype === "application/vnd.ms-excel";
+    if (!isCsvFile || !isCsvMime) {
+      logger.warn(
+        `Arquivo inválido: ${fileData.filename}, mimetype: ${fileData.mimetype}`
+      );
+      return reply
+        .code(415)
+        .send({
+          error: "UnsupportedMediaType",
+          message: "Formato de arquivo inválido. Envie um arquivo .csv",
+        });
+    }
+
+    tempFilePath = path.join(
+      UPLOAD_DIR,
+      `import_${Date.now()}_${fileData.filename}`
+    );
+    logger.info(
+      `Recebendo arquivo CSV: ${fileData.filename}. Salvando em ${tempFilePath}`
+    );
+
+    await pipeline(fileData.file, fs.createWriteStream(tempFilePath));
+    logger.info(`Arquivo salvo com sucesso.`);
+
+    logger.info(
+      `Chamando csvImportService.processAndImportCsv para: ${tempFilePath}`
+    );
+    const result = await csvImportService.processAndImportCsv(
+      tempFilePath,
+      logger as FastifyBaseLogger
+    );
+
+    logger.info(
+      `Processamento concluído. ${result.importedCount} boletos importados.`
+    );
+    reply.code(result.importedCount > 0 ? 201 : 200).send(result);
+  } catch (error: any) {
+    logger.error({ err: error }, "Erro no handler de importação de CSV");
+    const statusCode = error.statusCode || 500;
+    const responseError: { error: string; message: string; details?: any } = {
+      error: error.name || "InternalServerError",
+      message: error.message || "Ocorreu um erro inesperado.",
+    };
+    if (error.details && process.env.NODE_ENV !== "production") {
+      responseError.details = error.details;
+    }
+    reply.code(statusCode).send(responseError);
+  } finally {
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      fs.unlink(tempFilePath, (err) => {
+        if (err)
+          logger.error({ err }, `Erro ao deletar arquivo temp ${tempFilePath}`);
+        else logger.info(`Arquivo temp ${tempFilePath} deletado.`);
+      });
+    }
+  }
 }
 
 async function importPdfHandler(request: FastifyRequest, reply: FastifyReply) {
+  const logger = request.log;
+  logger.info("Recebida requisição para /import/pdf");
+
+  try {
+    const fileData: MultipartFile | undefined = await request.file();
+    if (!fileData) {
+      logger.warn("Nenhum arquivo PDF enviado.");
+      return reply
+        .code(400)
+        .send({ error: "BadRequest", message: "Nenhum arquivo PDF enviado." });
+    }
+
+    const isPdfFile = fileData.filename.toLowerCase().endsWith(".pdf");
+    const isPdfMime = fileData.mimetype === "application/pdf";
+    if (!isPdfFile || !isPdfMime) {
+      logger.warn(
+        `Arquivo inválido recebido: ${fileData.filename}, mimetype: ${fileData.mimetype}. Esperado PDF.`
+      );
+      return reply
+        .code(415)
+        .send({
+          error: "UnsupportedMediaType",
+          message: "Formato de arquivo inválido. Envie um arquivo .pdf",
+        });
+    }
+
+    logger.info(
+      `Arquivo PDF recebido: ${fileData.filename}, tamanho: ${fileData.file.bytesRead} bytes`
+    );
+
+    logger.info(
+      `Chamando pdfImportService para processar ${fileData.filename}`
+    );
+    const result = await pdfImportService.processAndSplitPdf(
+      fileData,
+      PDF_OUTPUT_DIR,
+      logger as FastifyBaseLogger
+    );
+    logger.info(`Processamento PDF concluído.`);
+
+    reply.code(201).send(result);
+  } catch (error: any) {
+    logger.error({ err: error }, "Erro no handler de importação de PDF");
+    const statusCode = error.statusCode || 500;
+    const responseError: { error: string; message: string; details?: any } = {
+      error: error.name || "InternalServerError",
+      message:
+        error.message || "Ocorreu um erro inesperado ao processar o PDF.",
+    };
+    if (error.details && process.env.NODE_ENV !== "production") {
+      responseError.details = error.details;
+    }
+    reply.code(statusCode).send(responseError);
+  }
+}
+
+async function getBoletosHandler(request: FastifyRequest<{ Querystring: GetBoletosQuery }>, reply: FastifyReply) {
     const logger = request.log;
-    logger.info('Recebida requisição para /import/pdf');
+    const filters = request.query;
+    logger.info({ filters }, 'Requisição GET /boletos recebida');
 
     try {
-        // 1. Obter o arquivo do upload
-        const fileData: MultipartFile | undefined = await request.file();
-        if (!fileData) {
-            logger.warn('Nenhum arquivo PDF enviado.');
-            return reply.code(400).send({ error: 'BadRequest', message: 'Nenhum arquivo PDF enviado.' });
-        }
+        const boletos = await boletoRepository.findWithFilters(filters, logger);
 
-        // 2. Validar tipo de arquivo (básico)
-        const isPdfFile = fileData.filename.toLowerCase().endsWith('.pdf');
-        const isPdfMime = fileData.mimetype === 'application/pdf';
-        if (!isPdfFile || !isPdfMime) {
-             logger.warn(`Arquivo inválido recebido: ${fileData.filename}, mimetype: ${fileData.mimetype}. Esperado PDF.`);
-             return reply.code(415).send({ error: 'UnsupportedMediaType', message: 'Formato de arquivo inválido. Envie um arquivo .pdf' });
-        }
+        const formattedBoletos = boletos.map(b => ({
+            ...b.toJSON(),
+            valor: b.valor.toString(),
+        }));
 
-        logger.info(`Arquivo PDF recebido: ${fileData.filename}, tamanho: ${fileData.file.bytesRead} bytes`);
-
-
-        logger.info(`Chamando pdfImportService para processar ${fileData.filename}`);
-        const result = await pdfImportService.processAndSplitPdf(fileData, PDF_OUTPUT_DIR, logger as FastifyBaseLogger);
-        logger.info(`Processamento PDF concluído.`);
-
-        // 5. Responder com o resultado do serviço
-        reply.code(201).send(result); // Usar 201 pois arquivos foram criados
+        logger.info(`Busca concluída, retornando ${formattedBoletos.length} boletos.`);
+        reply.send(formattedBoletos);
 
     } catch (error: any) {
-        logger.error({ err: error }, 'Erro no handler de importação de PDF');
-        const statusCode = error.statusCode || 500;
-        const responseError: { error: string; message: string; details?: any } = {
+        logger.error({ err: error }, 'Erro ao buscar boletos no handler');
+        reply.code(500).send({
             error: error.name || 'InternalServerError',
-            message: error.message || 'Ocorreu um erro inesperado ao processar o PDF.',
-        };
-         if (error.details && process.env.NODE_ENV !== 'production') {
-             responseError.details = error.details;
-         }
-        reply.code(statusCode).send(responseError);
+            message: error.message || 'Ocorreu um erro ao buscar os boletos.'
+        });
     }
-    // Nota: Não estamos salvando o PDF original temporariamente aqui,
-    // estamos passando o stream/buffer para o serviço. Se o PDF for muito grande,
-    // salvar temporariamente pode ser uma opção, similar ao handler do CSV.
 }
+
 export default {
-    importCsvHandler,
-    importPdfHandler
+  importCsvHandler,
+  importPdfHandler,
+  getBoletosHandler,
 };
-
-

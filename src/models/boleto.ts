@@ -1,7 +1,7 @@
 import { DataTypes, Model, Sequelize, Optional, Association } from 'sequelize';
 import { Lote } from './lote';
 
-interface BoletoAttributes {
+export interface BoletoAttributes {
   id: number;
   nome_sacado: string;
   id_lote: number; 
