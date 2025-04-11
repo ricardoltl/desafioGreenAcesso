@@ -1,0 +1,63 @@
+services:
+  app:
+    container_name: greenpark_api
+    build: .
+    ports:
+      - "${PORT}:${PORT}"
+    volumes:
+      - ./src:/usr/src/app/src
+      - ./tsconfig.json:/usr/src/app/tsconfig.json
+      - ./uploads:/usr/src/app/uploads
+      - ./generated_pdfs:/usr/src/app/generated_pdfs
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      migrate-seed:
+        condition: service_completed_successfully
+    command: npm run dev
+
+  migrate-seed:
+    container_name: greenpark_migrate_seed
+    build: .
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "/usr/local/bin/wait-for-it.sh db:5432 --timeout=30 --strict -- echo 'DB ready! Running Migrations/Seeds...' &&
+               echo 'Attempting to undo all migrations...' &&
+               npx sequelize-cli db:migrate:undo:all --config src/config/config.js  --seeders-path ./seeders &&
+               echo 'Attempting to run migrations...' &&
+               npx sequelize-cli db:migrate --config src/config/config.js  --seeders-path ./seeders &&
+               echo 'Attempting to run seeders...' &&
+               npx sequelize-cli db:seed:all --config src/config/config.js  --seeders-path ./seeders &&
+               echo 'Migrations/Seeds finished!'"
+
+  db:
+    container_name: greenpark_db
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
